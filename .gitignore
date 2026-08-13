@@ -39,3 +39,6 @@ mongo-data/
 letsencrypt/
 .replit
 attached_assets/
+
+# Host-specific deployment config — see deploy/deploy.conf.example
+deploy/deploy.conf

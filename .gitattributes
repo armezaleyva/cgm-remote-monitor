@@ -1,6 +1,10 @@
 # Auto detect text files and perform LF normalization
 * text=auto
 
+# Shell scripts must keep LF even when checked out on Windows: they are copied
+# to Linux hosts, where CRLF makes bash fail with `$'\r': command not found`.
+*.sh text eol=lf
+
 # Standard to msysgit
 *.doc	 diff=astextplain
 *.DOC	 diff=astextplain

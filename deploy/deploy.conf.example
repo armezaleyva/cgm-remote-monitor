@@ -1,0 +1,29 @@
+# Deployment configuration — copy to $HOME/deploy.conf on the deployment host.
+#
+#   cp deploy/deploy.conf.example ~/deploy.conf && ${EDITOR:-nano} ~/deploy.conf
+#
+# This file is host-specific and MUST NOT be committed. The repo is public;
+# the hostname belongs here, not in the scripts.
+
+# Public hostname the app is served on. Used for the Host header in the
+# post-deploy health check, which is issued against 127.0.0.1 so it exercises
+# the reverse proxy without depending on external DNS.
+PUBLIC_HOST=nightscout.example.org
+
+# Git checkout the image is built from.
+BUILD_DIR=$HOME/ns-build
+
+# Directory holding docker-compose.yml and .env.
+STACK_DIR=$HOME/nightscout
+
+# Local image name. Deploys tag it with the short commit SHA.
+IMAGE_REPO=nightscout-tz
+
+# Pre-deploy database backup. Set empty to skip (not recommended).
+BACKUP_SCRIPT=$HOME/backup-nightscout.sh
+
+# Number of old images to retain as rollback targets.
+KEEP_IMAGES=5
+
+# Health check attempts after the swap, 2s apart (60 = 2 minutes).
+HEALTH_TRIES=60
