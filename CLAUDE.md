@@ -104,7 +104,9 @@ Server-side settings come from env vars via `lib/server/env.js`; `IMPORT_CONFIG`
 
 `docs/` is deliberately written as an agent-readable knowledge base, and `docs/INDEX.md` is its entrypoint. Before non-trivial work in an area, check `docs/audits/` for how it currently works, `docs/requirements/` for correctness criteria, and `docs/test-specs/` for known coverage gaps. `docs/proposals/` holds RFC-style designs that are proposed but not implemented — do not treat them as describing current behavior.
 
-`docs/meta/ROADMAP.md` is the short list of what is actually being worked on, in order, including a *Decided against* section — check it before proposing work, and read it before suggesting something that section already rules out. `docs/meta/tech-debt-inventory.md` is the full catalogue of known debt behind it: a reference, not a plan, and parts of it have been overtaken by events, so verify against the code before acting on an entry.
+`docs/meta/ROADMAP.md` is **this fork's** roadmap — what we are working on, in order, plus a *Decided* section recording closed questions. Check it before proposing work, and do not re-open something it has already settled.
+
+Everything else under `docs/` — the seven `audits/`, `architecture-overview.md`, and `modernization-roadmap.md` — describes **upstream**, not this fork's plans. Despite its name, `modernization-roadmap.md` is not our roadmap; it is upstream's technical-debt catalogue. It was generated in a single AI pass in commit `2f79b3fa` (2026-01-13) and never substantively revised; spot-checks found claims that were inaccurate when written, not merely stale. Treat it as leads to verify against the code, never as findings, and never as work this fork has committed to.
 
 ## Deployment shape
 
