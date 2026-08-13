@@ -159,7 +159,72 @@ app — a hardware decision, not a software one.
    trusted container in our own stack; worth revisiting if Nightscout gains a scoped upload token
    that tconnectsync supports.
 
+## Deployed 2026-08-13
+
+tconnectsync v3.0.1 runs as a compose service on the host, polling every 300s.
+
+- **Image built locally for arm64** — [deploy/tconnectsync/Dockerfile](../../deploy/tconnectsync/Dockerfile).
+- **Service definition** — [compose-service.yml.example](../../deploy/tconnectsync/compose-service.yml.example).
+- **Profile corrected.** `defaultProfile` moved off the Nightscout factory `Default` and onto the
+  pump's active profile, with the pump's own basal schedule, ISF, carb ratio and DIA. The old
+  `Default` store is preserved — the profile collection is append-only. Subsequent runs report
+  *"Pump and Nightscout profiles up to date"*, so the sync is idempotent. (Therapy values are
+  deliberately not recorded here; read them from the pump or the profile editor.)
+- **Backfilled a multi-week window of treatments**, all stamped
+  `enteredBy: "Pump (tconnectsync)"` — so a rollback is a single `deleteMany` on that field.
+  The overwhelming majority are Temp Basal records: Control-IQ adjusts basal every few minutes,
+  so expect roughly thirty times as many basal rows as boluses. Also present: Sleep, Basal
+  Suspension/Resume, Site Change, Sensor Start/Stop. A handful of duplicate Site Change events
+  were deduplicated by Nightscout on insert, so the stored count runs slightly below the number
+  tconnectsync reports as processed — that gap is expected, not data loss.
+- **`devicestatus` stayed 0.** `DEVICE_STATUS` yields nothing for historical data; it would only
+  populate from live events. The `pump` plugin is also absent from `ENABLE`, so the pump pill
+  would need that added before it could render anything.
+
+### Gotcha: cache volume ownership
+
+The credential-cache bind mount must be owned by **uid 1000** (the container's `appuser`), not
+the host user — ours is 1001. Getting this wrong crash-loops the container on
+`PermissionError: .../.creds_cache`. Recorded in the compose example.
+
+## The remaining blocker is not ours
+
+**Tandem Source has no pump events after 2026-07-15T08:28:35.** Verified by dry-running a recent
+window (0 events) against a July window (2,662 events) — the pipeline is provably correct and the
+source is empty. All four pumps on the account are quiet; this is not a pump switch.
+
+The break is somewhere in pump → phone → Tandem cloud, and none of it is fixable from this repo.
+Debug order: pull a report from source.tandemdiabetes.com (authoritative — empty there means the
+data never reached Tandem); check t:connect's last-sync time on the phone; confirm the pump in
+daily use is the one pinned in `PUMP_SERIAL_NUMBER`; check iOS Background App Refresh, Bluetooth
+and Cellular for t:connect.
+
+The uploader will pick up new data automatically within 5 minutes of it appearing.
+
+### `BASAL_RENDER` — done 2026-08-13
+
+Set to `default` on the nightscout service. Verified in the running container and as served:
+`extendedSettings.basal: {"render": "default"}`.
+
+**But it only reaches viewers with no stored preference.**
+[browser-settings.js:316-317](../../lib/client/browser-settings.js#L316-L317) lets a localStorage
+`basalrender` value override the server default. Any viewer who has previously saved settings in
+the drawer keeps their stored `'none'` and still sees no basal layer until they pick "Default"
+themselves. This is the deferred per-viewer problem surfacing in practice.
+
 ## Still open
 
-- **Per-viewer vs. server-set display defaults.** Deferred, not dropped — `basalrender` is
-  per-browser localStorage and we have several viewers.
+- **Per-viewer vs. server-set display defaults.** No longer hypothetical — see above. A viewer
+  who once opened the settings drawer is now pinned to their old value, and nothing we set
+  server-side reaches them.
+- **Live data.** Tandem Source still holds nothing after 2026-07-15. Working hypothesis (the
+  operator's, and it fits the evidence): the t:connect app was not installed, and 2026-07-11 was
+  the last manual upload. The pinned pump reported a `lastUploadDate` of 2026-08-13 during
+  diagnosis and its last-seen event advanced from 07-11 to 07-15 mid-session, both consistent
+  with a freshly installed app working through a backlog. Unresolved: whether the pump has been
+  in use since 07-15, which decides between "more backlog is coming" and "nothing to upload".
+
+**Note for auto-update:** `autoupdate.py` only ever processes a 24-hour window
+(`time_start = time_end - timedelta(days=1)`). It notices when `maxDateOfEvents` advances and
+then imports just the previous day, so any backlog older than 24h is silently skipped. Closing a
+gap requires an explicit run with `--start-date` / `--end-date`.
