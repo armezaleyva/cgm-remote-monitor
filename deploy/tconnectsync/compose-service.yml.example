@@ -1,0 +1,48 @@
+# tconnectsync service block for the deployment host's docker-compose.yml.
+#
+# Append under `services:`. All secrets come from the stack's .env as ${VAR};
+# nothing site-specific belongs in this file — the repo is public.
+#
+# Requires the locally-built image (upstream publishes amd64 only):
+#   see deploy/tconnectsync/Dockerfile
+
+  tconnectsync:
+    image: tconnectsync:v3.0.1
+    container_name: tconnectsync
+    restart: always
+    depends_on:
+      - nightscout
+    logging: *default-logging
+    volumes:
+      # MUST be owned by uid 1000 — the container's `appuser` — which is NOT
+      # necessarily the host user (ours is 1001). A host-owned directory here
+      # makes the container crash-loop on PermissionError writing .creds_cache.
+      #   sudo chown -R 1000:1000 tconnectsync-cache
+      - ./tconnectsync-cache:/home/appuser/.config/tconnectsync
+    environment:
+      TZ: America/Denver
+
+      ### Tandem Source
+      TCONNECT_EMAIL: ${TCONNECT_EMAIL}
+      TCONNECT_PASSWORD: ${TCONNECT_PASSWORD}
+      TCONNECT_REGION: ${TCONNECT_REGION}
+      TIMEZONE_NAME: ${TIMEZONE_NAME}
+
+      # Pin the pump. If several pumps exist on the Tandem account,
+      # tconnectsync otherwise auto-selects by most recent upload — a silent
+      # tiebreak that can switch pumps without any error. The serial is a
+      # device identifier: keep the literal value in the host's .env, never
+      # in this repo.
+      PUMP_SERIAL_NUMBER: ${PUMP_SERIAL_NUMBER}
+
+      ### Nightscout — internal compose address, so the API secret never
+      ### traverses the public path and traefik/TLS is bypassed entirely.
+      NS_URL: http://nightscout:1337
+      NS_SECRET: ${API_SECRET}
+
+    # CGM and CGM_ALERTS deliberately omitted: upstream warns of >30 min lag
+    # and Dexcom Share already populates `entries`; enabling them duplicates
+    # the glucose stream from a slower source.
+    command: >
+      --auto-update
+      --features BASAL BOLUS IOB PUMP_EVENTS PROFILES DEVICE_STATUS
