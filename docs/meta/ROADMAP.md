@@ -56,6 +56,15 @@ for this fork — it is upstream's technical-debt catalogue, and we have not ado
 
 ## Later
 
+- **Fix `TZ: America/Phoenix` in the compose stack.** *(ops — latent bug)* The container runs on
+  Arizona time while the household and pump are in Denver. The value came from the Nightscout
+  docker template (the comment "Change if you are not in Arizona time" is still beside it) and
+  was never changed. Phoenix does not observe DST and Denver does, so the container clock is an
+  hour off through the summer and correct through the winter. Confirmed *not* the reason the
+  display timezone picker was built, so the two are independent. Not urgent — Nightscout stores
+  UTC and the chart renders in each browser's local time — but it will keep causing
+  hard-to-reproduce, seasonal confusion until fixed.
+
 - **Add an `upstream` remote and write down the sync procedure.** *(ops)* `git remote -v` lists
   only `origin` (the fork), so there is no configured path to pull `nightscout/dev`. We are ~3½
   months behind. Upstream ships correctness fixes to a health-critical app, and right now taking
