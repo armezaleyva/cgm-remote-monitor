@@ -85,31 +85,81 @@ This is the same shape as the problem the display timezone picker solved, and it
 durable fork-local requirement may be *"server-set display defaults that apply to every viewer"*
 rather than anything basal-specific. Worth deciding before building anything.
 
-## Routes to insulin data
+## The setup
 
-Only three exist, and the choice is a setup decision, not a software one.
+Established 2026-08-13:
 
-1. **Care Portal manual entry.** Nightscout's built-in `careportal` plugin records boluses,
-   carbs, and temp basals by hand. Requires no pump and no uploader — it is the route for anyone
-   on injections rather than a pump. Already enabled by default.
-2. **A looping app uploader** — AAPS (Android), Loop or Trio (iOS). Uploads boluses, temp basals,
-   and a profile store automatically. Requires a compatible pump and a phone running it.
-3. **A pump-specific uploader**, where one exists for the pump in question.
+- **Pump:** Tandem t:slim X2, running **Control-IQ** (Tandem's own closed loop)
+- **App:** t:connect mobile on iOS. No Loop/Trio — they cannot drive a t:slim; Tandem exposes no
+  open control interface
+- **CGM:** Dexcom, reaching Nightscout via the Share bridge, independent of the pump path
+- **Nothing has ever attempted to upload** — no POST to treatments/devicestatus/profile in the
+  logs, and the sole auth subject (`share`, roles `["readable"]`) is read-only
 
-Route 1 works today with zero changes. Routes 2 and 3 depend on hardware we have not established
-exists.
+## Route: tconnectsync
 
-## Open questions
+[jwoglom/tconnectsync](https://github.com/jwoglom/tconnectsync) polls Tandem's cloud and posts
+treatments to the Nightscout API. It is the only route for a Tandem pump.
 
-1. **Is there an insulin pump in the picture, or are we on injections?** This decides between
-   route 1 and routes 2/3, and nothing can proceed before it is answered.
-2. **Who would enter or upload the data?** Manual entry is a per-dose habit for someone; an
-   uploader is a one-time setup.
-3. **What should viewers see?** Settled: current-rate pill, basal chart layer, and bolus marks
-   on the chart.
-4. **Per-viewer vs. server-set defaults.** Deferred — not selected as a requirement, but it will
-   resurface, because `basalrender` is per-browser localStorage and we have several viewers.
+**Tandem Source, not t:connect.** Tandem retired the t:connect *portal* in favour of Tandem
+Source (US, from 2024-09-30). **tconnectsync 2.0+ is required**; earlier versions target APIs
+that no longer exist. The phone app is still branded t:connect — the change is server-side.
 
-## Next step
+### Configuration
 
-Answer question 1. Until then this item cannot move, and no code in this repo is involved.
+| Variable | Value |
+|---|---|
+| `TCONNECT_EMAIL` / `TCONNECT_PASSWORD` | Tandem Source credentials → `.env`, referenced as `${VAR}` |
+| `NS_URL` | `http://nightscout:1337` — **internal compose address** |
+| `NS_SECRET` | `API_SECRET`. The existing `share` token is read-only and cannot upload |
+| `TIMEZONE_NAME` | The pump's timezone, TZ-database format |
+| `TCONNECT_REGION` | `US` or `EU` (defaults to `US`) |
+| `PUMP_SERIAL_NUMBER` | Optional |
+
+Use the **internal** `NS_URL`: the API secret then never traverses the public path, traefik and
+TLS are bypassed, and the uploader is unaffected by certificate or DNS problems. This mirrors
+how `deploy.sh` health-checks against 127.0.0.1.
+
+**Leave the CGM feature off** (it is opt-in). Upstream's own warning: it delivers CGM with
+*">30 MINUTE lag and SHOULD NOT BE USED AS A REPLACEMENT FOR DEXCOM SHARE"*. Enabling it would
+also write a second source into `entries` alongside `share2`, producing duplicates. Default
+features — basals, boluses, pump events, insulin profiles — are exactly what we want.
+
+### The arm64 problem
+
+The published image is **amd64 only**, confirmed against the host:
+
+```
+ghcr.io/.../tconnectsync:latest   platform: {architecture: amd64, os: linux}
+host                             aarch64 / arm64
+```
+
+Not a manifest list — a single-architecture manifest. It will not run natively.
+
+**Build it on the host instead.** The Dockerfile is `python:3.11-slim` (multi-arch, arm64
+included) and installs `gcc`, so native dependencies without arm64 wheels compile from source.
+This is the same build-on-host pattern `deploy/deploy.sh` already uses for Nightscout, so it
+fits the existing operational model rather than adding a new one.
+
+## Expected latency
+
+Pump → phone → Tandem Source → 5-minute poll. Insulin data will run **tens of minutes behind**
+real time. This is inherent to the route, not tunable. It is suitable for reviewing the day, not
+for in-the-moment decisions. Real-time insulin data would require a different pump and a looping
+app — a hardware decision, not a software one.
+
+## Prerequisites before data is useful
+
+1. **Configure the profile.** Still Nightscout's factory default. tconnectsync syncs insulin
+   profiles, which may populate it — verify rather than assume, because IOB/COB/BWP compute from
+   whatever is there.
+2. **Set `BASAL_RENDER`.** Currently unset, so `basalrender` falls back to `'none'` and no
+   viewer sees the basal layer regardless of data.
+3. **Decide the auth story.** `NS_SECRET` is the full-privilege API secret. Acceptable for a
+   trusted container in our own stack; worth revisiting if Nightscout gains a scoped upload token
+   that tconnectsync supports.
+
+## Still open
+
+- **Per-viewer vs. server-set display defaults.** Deferred, not dropped — `basalrender` is
+  per-browser localStorage and we have several viewers.
