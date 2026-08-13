@@ -41,12 +41,11 @@ for this fork — it is upstream's technical-debt catalogue, and we have not ado
 
 ## Now
 
-- **Add an `upstream` remote and write down the sync procedure.** *(ops)* `git remote -v` lists
-  only `origin` (the fork), so there is no configured path to pull `nightscout/dev`. We are ~3½
-  months behind. Upstream ships correctness fixes to a health-critical app — the Mongo driver
-  hardening and profile-dedup fixes in this very log — and right now taking one is an ad-hoc
-  scramble. This is plumbing, not a programme; it's here because we've committed to carrying a
-  local patch indefinitely, which makes merging a permanent part of running the instance.
+- **Display basal and bolus information on the site.** *(feature — requirements stage)*
+  Upstream already implements this in full; see
+  [basal-bolus-display.md](../requirements/basal-bolus-display.md) for what exists, what gates
+  it, and the open questions. Treat this as a configuration-and-data-flow problem until proven
+  otherwise — no code has been shown to be missing.
 
 ## Next
 
@@ -57,8 +56,10 @@ for this fork — it is upstream's technical-debt catalogue, and we have not ado
 
 ## Later
 
-_Feature items to be filled in._ Empty because our wants haven't been written down yet, not
-because there's nothing to build.
+- **Add an `upstream` remote and write down the sync procedure.** *(ops)* `git remote -v` lists
+  only `origin` (the fork), so there is no configured path to pull `nightscout/dev`. We are ~3½
+  months behind. Upstream ships correctness fixes to a health-critical app, and right now taking
+  one is an ad-hoc scramble. Plumbing, not a programme — but it compounds while it waits.
 
 ## Decided
 
