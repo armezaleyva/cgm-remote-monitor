@@ -22,12 +22,16 @@ one timezone. Two themes follow from that:
 
 ## Where the fork stands
 
-Divergence from upstream is one code change plus fork-local documentation:
+Divergence from upstream is one app change plus fork-local tooling and docs:
 
 | What | Where |
 |---|---|
 | Per-viewer display timezone picker (`341040a7`) | 41 lines across 5 client files |
+| Deploy tooling (`74cbe3ea`) | `deploy/` — build, in-image test gate, DB backup, container swap, health check, auto-rollback |
 | Fork-local docs | `CLAUDE.md`, `docs/meta/ROADMAP.md` |
+
+Only the timezone picker touches upstream-owned application files; the rest lives at paths
+upstream does not use, so it costs nothing at merge time. That is the pattern to keep.
 
 Everything else is upstream `nightscout/cgm-remote-monitor`. Last upstream merge: `7e0e77f8`,
 2026-04-29.
