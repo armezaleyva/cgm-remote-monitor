@@ -187,7 +187,32 @@ The credential-cache bind mount must be owned by **uid 1000** (the container's `
 the host user — ours is 1001. Getting this wrong crash-loops the container on
 `PermissionError: .../.creds_cache`. Recorded in the compose example.
 
-## The remaining blocker is not ours
+## Resolved 2026-08-14 — live
+
+Basal and bolus data now reach the site end to end, roughly five minutes behind real time
+(CGM remains ~1 minute via Share). A recent 24-hour sample holds a few hundred Temp Basal
+records — Control-IQ adjusting every ~5 minutes — plus boluses, Sleep, and Basal
+Suspension/Resume events.
+
+**Cause of the gap, confirmed:** the t:connect app was not installed, and the last manual upload
+was 2026-07-11. Installing it started an automatic backlog upload, visible as the pump's
+last-seen event marching forward across successive poll cycles (07-15 → 07-18 → 07-29 → 08-08 →
+current) over roughly two hours.
+
+**The mid-July to mid-August window is genuinely sparse, not missing.** A dry run over it read a
+normal volume of raw pump events but produced only ~79 treatments, against ~4,970 for the
+preceding seventeen days. Daily counts show single digits until 2026-08-11 and normal volume from
+08-12. The pump was powered and logging but not delivering. Nothing to chase.
+
+**Auto-update did import the tail of the backlog by itself** once events crossed into its
+24-hour window — one cycle added several hundred records. The 24-hour limit still means anything
+older needs an explicit `--start-date`/`--end-date` run.
+
+**Token expiry is handled.** Tandem's JWTs last ~30 minutes; the uploader logs an HTTP 401 with
+`"exp" claim timestamp check failed`, then re-logs in automatically. Expect a steady trickle of
+these in the logs — they are not a fault.
+
+## The blocker that was not ours (historical)
 
 **Tandem Source has no pump events after 2026-07-15T08:28:35.** Verified by dry-running a recent
 window (0 events) against a July window (2,662 events) — the pipeline is provably correct and the

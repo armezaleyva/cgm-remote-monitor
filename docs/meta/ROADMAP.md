@@ -41,11 +41,21 @@ for this fork — it is upstream's technical-debt catalogue, and we have not ado
 
 ## Now
 
-- **Display basal and bolus information on the site.** *(feature — requirements stage)*
-  Upstream already implements this in full; see
-  [basal-bolus-display.md](../requirements/basal-bolus-display.md) for what exists, what gates
-  it, and the open questions. Treat this as a configuration-and-data-flow problem until proven
-  otherwise — no code has been shown to be missing.
+- **Make sure every viewer actually sees the basal layer.** *(feature — last mile)* The server
+  default is set, but `browser-settings.js` lets a stored `basalrender` value in localStorage
+  override it, so anyone who has previously saved settings in the drawer still sees nothing.
+  Each such viewer must pick "Default" once. Decide whether that is acceptable or whether we
+  want server-set defaults that genuinely reach everyone — the deferred question, now concrete.
+  → [basal-bolus-display.md](../requirements/basal-bolus-display.md)
+
+## Done
+
+- **Display basal and bolus information on the site.** *(2026-08-13)* Achieved without changing
+  any application code — upstream already implemented the display. The work was a missing data
+  source: the instance was CGM-only via the Dexcom Share bridge, with no pump uploader at all.
+  Now live end to end with ~5 minute latency via tconnectsync against Tandem Source, plus a
+  corrected profile and a historical backfill.
+  → [basal-bolus-display.md](../requirements/basal-bolus-display.md)
 
 ## Next
 
