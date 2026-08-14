@@ -112,13 +112,35 @@ Everything else under `docs/` — the seven `audits/`, `architecture-overview.md
 
 This fork is deployed, not just developed. Operator-specific details (host, domain, credentials) are deliberately kept out of this repo — ask rather than guess. What matters for writing code here:
 
-- Production runs the app as a **Docker image built from this repo's own `Dockerfile`**, tagged with the short commit SHA, from a git checkout of the fork. There is no CI pipeline and no image registry; a deploy is a build on the host followed by `docker compose up -d`. Rollback is re-pointing the image tag at a previous SHA, so keeping builds tagged per-commit matters.
+- Production runs the app as a **Docker image built from this repo's own `Dockerfile`**, tagged with the short commit SHA, from a git checkout of the fork. There is no CI pipeline and no image registry. Deploys and rollbacks go through the scripts in `deploy/` — see *Feature development protocol* below. Rollback is re-pointing the image tag at a previous SHA, so keeping builds tagged per-commit matters.
 - The target host is **`aarch64`/ARM64**. Anything added to the build must compile natively on ARM — native npm modules with x86-only prebuilds will break the image build, not just runtime.
 - Production pins **MongoDB 4.4**, the floor of the CI matrix. Don't use query or driver features newer than that, even though CI also passes on 5.0/6.0.
 - TLS is terminated by a reverse proxy in front of the app, which runs with `INSECURE_USE_HTTP=true` and listens on 1337 internally. Code must not assume it sees HTTPS directly; respect the forwarded headers rather than reading the scheme off the socket.
 - Secrets (`API_SECRET`, bridge credentials) come from an `.env` file next to the compose file and are referenced as `${VAR}`. Never inline a secret value into compose, code, or docs.
 - `AUTH_DEFAULT_ROLES=denied` in production, so unauthenticated API reads return 401. A 401 from a deployed instance is usually correct behavior, not a regression.
 - Mongo is backed up nightly by a host cron script. Any change touching schema or migrations should be considered against a restore path.
+
+## Feature development protocol
+
+This fork ships to a live instance carrying one person's real CGM data, with no CI and no staging environment. The loop below is the entire safety net — follow it rather than improvising a shorter path.
+
+1. **Branch.** `git checkout -b wip/<short-name>` off `master`. `master` means "known good in production"; don't develop on it directly.
+2. **Change and commit.** Keep changes small and backward-compatible — see the API-stability note at the top of this file.
+3. **Push.** `deploy.sh` deploys a *pushed* git ref, so unpushed work cannot be deployed.
+4. **Deploy the branch:** `./deploy.sh wip/<short-name>` on the host (see `deploy/README.md`). It builds an image tagged with the short SHA, runs the unit suite *inside that image* against a throwaway MongoDB, takes a pre-deploy `mongodump`, swaps the container, health-checks it, and rolls back automatically if the app doesn't come back.
+5. **Verify against the running instance.**
+6. **Merge to `master`** once it is proven in production, and push.
+
+**Never hand-build the image or hand-edit the compose image tag.** That bypasses the test gate and the pre-deploy backup and leaves the recorded rollback target wrong. `deploy/deploy.sh` refuses to run from inside the build checkout for the same reason — always run the installed copy.
+
+**Rollback** is `./rollback.sh` on the host, which reverts to the tag the last deploy replaced. The most recent image tags are retained as rollback targets.
+
+Realities that shape verification:
+
+- There is often **no local Node toolchain and no local MongoDB**, so `npm test` may not be runnable on the dev machine. The test gate inside the built image is then the only real verification path. It works because the `Dockerfile` runs `npm ci --omit=optional` — omitting *optional*, not *dev* — so mocha and `tests/` ship inside the image, and `tests/ci.test.env` is committed.
+- A deploy **recreates the container**, so expect a brief outage (~15s) while it restarts. Avoid deploying while someone is actively watching CGM data.
+- A deployed instance answers **401** on API reads because `AUTH_DEFAULT_ROLES=denied`. 401 means healthy; the health check accepts 401 and 200 as success. Don't "fix" a working instance over it.
+- Host-specific values (hostname, paths) live in a `deploy.conf` on the server that is deliberately not in this repo. Ask rather than guess.
 
 ## Contributing conventions
 
