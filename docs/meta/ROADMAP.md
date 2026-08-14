@@ -55,6 +55,16 @@ for this fork — it is upstream's technical-debt catalogue, and we have not ado
   want server-set defaults that genuinely reach everyone — the deferred question, now concrete.
   → [basal-bolus-display.md](../requirements/basal-bolus-display.md)
 
+- **A "mood of the day" pill.** *(feature — shipping off by default first)* A decorative status
+  pill showing one absurd emoji per day, chosen by hashing the local calendar date so it holds
+  steady all day and every viewer sees the same one. Phase 1 ships it registered but hidden, so
+  it has to be ticked on per browser while it is being verified; phase 2 flips it on for
+  everyone. Phase 2 is the part to think about — a stored `showPlugins` in localStorage beats
+  the server default, so reaching existing viewers needs a storage-version bump and a migration,
+  which is **the same trap as the basal item above** on a payload where being wrong is harmless.
+  Treat it as the rehearsal for that decision.
+  → [mood-of-the-day.md](../requirements/mood-of-the-day.md)
+
 ## Done
 
 - **A repeatable, verified deploy loop.** *(2026-08-14)* Build, in-image test gate, pre-deploy
