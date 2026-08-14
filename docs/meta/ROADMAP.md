@@ -10,9 +10,13 @@ one timezone. Two themes follow from that:
 
 ## How to use this file
 
-- **Log work here as part of doing it.** Starting something → *Now*. Finishing it → *Done*, with
-  the date and a link. Settling a question → *Decided*, with the consequence. Deferring something
-  → *Next* or *Later*. A session that changes this fork should leave this file true.
+- **Log work here as part of doing it.** Starting something → *Now*. Finishing it → *Done*.
+  Settling a question → *Decided*, with the consequence. Deferring something → *Next* or *Later*.
+  A session that changes this fork should leave this file true.
+- **Detail belongs in *Now*, not *Done*.** While work is live, say what is being attempted, what
+  is still unresolved, and what to watch — that is what the next session needs. On completion,
+  compress it to a single line: it happened, when, and where to read more. A finished item is a
+  pointer, not a retrospective.
 - **One line per item**, plus a link to detail if detail exists.
 - **No dates, no effort estimates, no code samples.** Those are what rotted the document this
   one replaced.
@@ -53,19 +57,11 @@ for this fork — it is upstream's technical-debt catalogue, and we have not ado
 
 ## Done
 
-- **A repeatable, verified deploy loop.** *(2026-08-14)* Deploying used to mean hand-building an
-  image and hand-editing the compose tag, with nothing verifying the result. The `deploy/` scripts
-  now build an image tagged by short SHA, run the unit suite *inside that image* against a
-  throwaway MongoDB, take a pre-deploy `mongodump`, swap the container, health-check it, and roll
-  back automatically if it does not come back. Measured end to end at under four minutes. The
-  protocol lives in `CLAUDE.md` so other sessions follow it instead of improvising.
-  → [deploy/README.md](../../deploy/README.md)
+- **A repeatable, verified deploy loop.** *(2026-08-14)* Build, in-image test gate, pre-deploy
+  backup, swap, health check, auto-rollback. → [deploy/README.md](../../deploy/README.md)
 
-- **Display basal and bolus information on the site.** *(2026-08-13)* Achieved without changing
-  any application code — upstream already implemented the display. The work was a missing data
-  source: the instance was CGM-only via the Dexcom Share bridge, with no pump uploader at all.
-  Now live end to end with ~5 minute latency via tconnectsync against Tandem Source, plus a
-  corrected profile and a historical backfill.
+- **Display basal and bolus information on the site.** *(2026-08-13)* No application code changed;
+  the gap was a missing pump data source, now filled by tconnectsync.
   → [basal-bolus-display.md](../requirements/basal-bolus-display.md)
 
 ## Next
