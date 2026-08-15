@@ -129,22 +129,30 @@ fi
 
 step 'Creating environment files'
 
-# Values mirror the Makefile's `my.test.env` target, plus NODE_ENV=test.
-# The Makefile target omits NODE_ENV, and tests/lib/production-safety.js
-# hard-refuses to run without it, so `make my.test.env` alone produces a file
-# that cannot run the suite. tests/ci.test.env sets it, which is why CI never
-# hit this.
+# Based on the Makefile's `my.test.env` target, with two deliberate changes,
+# both so a local run matches what CI and the deploy gate actually run:
+#
+#   NODE_ENV=test  - the Makefile omits it and tests/lib/production-safety.js
+#                    hard-refuses to run without it, so `make my.test.env`
+#                    alone produces a file that cannot run the suite.
+#   database name  - tests/mongo-storage.test.js hardcodes 'testdb', matching
+#                    tests/ci.test.env. The Makefile's 'test_db' fails it.
+#
+# CI never hit either, because it uses tests/ci.test.env throughout.
 if [ -f my.test.env ]; then
-  if grep -q '^NODE_ENV=test' my.test.env; then
-    good 'my.test.env already exists, leaving it alone'
-  else
+  good 'my.test.env already exists, leaving it alone'
+  if ! grep -q '^NODE_ENV=test' my.test.env; then
     printf 'NODE_ENV=test\n' >> my.test.env
-    good 'my.test.env existed but lacked NODE_ENV=test; appended it'
+    good '  ...but it lacked NODE_ENV=test, so that was appended'
+  fi
+  if ! grep -q '/testdb' my.test.env; then
+    warn '  its database is not named testdb; tests/mongo-storage.test.js'
+    warn '  hardcodes that name and will fail. Edit MONGO_CONNECTION to match.'
   fi
 else
   cat > my.test.env <<'EOF'
 NODE_ENV=test
-MONGO_CONNECTION=mongodb://localhost:27017/test_db
+MONGO_CONNECTION=mongodb://localhost:27017/testdb
 CUSTOMCONNSTR_mongo_collection=test_sgvs
 CUSTOMCONNSTR_mongo_settings_collection=test_settings
 API_SECRET=test-secret-key
