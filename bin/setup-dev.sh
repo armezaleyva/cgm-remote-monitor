@@ -195,8 +195,17 @@ if [ "$MONGO_UP" -eq 1 ]; then
 else
   info 'npm run test:integration         (needs MongoDB — see above)'
 fi
-info 'TEST=moodoftheday npm run test-single    one suite by name'
 info 'npm run dev                      dev server on PORT (default 1337)'
+printf '\n'
+info 'One suite by name:'
+if [ "$PLATFORM" = windows ]; then
+  # npm runs scripts through cmd.exe on Windows, which does not expand the
+  # $TEST in the test-single script, so invoke mocha directly instead.
+  info '  npx env-cmd -f ./my.test.env mocha --timeout 5000 \'
+  info '      --require ./tests/hooks.js --exit ./tests/moodoftheday.test.js'
+else
+  info '  TEST=moodoftheday npm run test-single'
+fi
 if [ "$FAST" -eq 1 ]; then
   printf '\n'
   warn 'Ran with --fast, so there is no webpack bundle. Run `npm run bundle` before `npm start`.'
