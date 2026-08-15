@@ -58,16 +58,18 @@ for this fork — it is upstream's technical-debt catalogue, and we have not ado
   want server-set defaults that genuinely reach everyone — the deferred question, now concrete.
   → [basal-bolus-display.md](../requirements/basal-bolus-display.md)
 
-- **A "mood of the day" pill.** *(feature — phase 1 deployed, not yet switched on)* A decorative
+- **A "mood of the day" pill.** *(feature — phase 1 live, awaiting observation)* A decorative
   status pill showing one absurd emoji per day, chosen by hashing the local calendar date so it
-  holds steady all day and every viewer sees the same one. The code is in production, but
-  **`ENABLE` in the compose file has not been changed yet**, so the plugin does not register and
-  nothing is visible — that one-word edit plus a container restart is the next action. Then tick
-  it on in one browser and confirm the emoji renders, the caption shows on hover, and it holds
-  overnight before flipping to phase 2. Phase 2 is the part to think about: a stored
-  `showPlugins` in localStorage beats the server default, so reaching existing viewers needs a
-  storage-version bump and a migration — **the same trap as the basal item above**, on a payload
-  where being wrong is harmless. Treat it as the rehearsal for that decision.
+  holds steady all day and every viewer sees the same one. Phase 1 is fully applied in
+  production: the code is deployed and `ENABLE` now registers the plugin, so its checkbox is in
+  the settings drawer while the pill itself stays hidden until a viewer ticks it. **What is left
+  is watching it**, which no test can do — tick it on in one browser, confirm the emoji renders
+  rather than a tofu box on the devices our viewers actually use, that the caption shows on
+  hover, and that the emoji is unchanged across reloads today but different tomorrow. Only then
+  consider phase 2, which flips it on for everyone: a stored `showPlugins` in localStorage beats
+  the server default, so reaching existing viewers needs a storage-version bump and a migration
+  — **the same trap as the basal item above**, on a payload where being wrong is harmless. Treat
+  it as the rehearsal for that decision.
   → [mood-of-the-day.md](../requirements/mood-of-the-day.md)
 
 ## Done

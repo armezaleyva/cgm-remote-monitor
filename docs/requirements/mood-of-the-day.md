@@ -1,7 +1,7 @@
 # Mood of the Day
 
 > **Fork-local document.** Written for `armezaleyva/cgm-remote-monitor`, not upstream. Status:
-> phase 1 code deployed but not yet switched on; phase 2 not started. Linked from
+> phase 1 live in production and awaiting observation; phase 2 not started. Linked from
 > [ROADMAP.md](../meta/ROADMAP.md).
 
 ## Goal
@@ -46,7 +46,7 @@ Visibility needs **two** independent things: the plugin must be enabled (`ENABLE
 requires `showPlugins` to be both truthy and zero-length, which no string satisfies, so it never
 fires.
 
-### Phase 1 — off by default (code deployed; not yet switched on)
+### Phase 1 — off by default (live)
 
 `ENABLE` gets `moodoftheday`; `SHOW_PLUGINS` does not. The plugin registers and its checkbox
 appears in the settings drawer, but the pill stays hidden until a viewer ticks it. Nothing changes
