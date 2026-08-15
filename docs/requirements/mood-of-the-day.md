@@ -1,7 +1,8 @@
 # Mood of the Day
 
 > **Fork-local document.** Written for `armezaleyva/cgm-remote-monitor`, not upstream. Status:
-> phase 1 implemented, phase 2 not started. Linked from [ROADMAP.md](../meta/ROADMAP.md).
+> phase 1 code deployed but not yet switched on; phase 2 not started. Linked from
+> [ROADMAP.md](../meta/ROADMAP.md).
 
 ## Goal
 
@@ -45,11 +46,20 @@ Visibility needs **two** independent things: the plugin must be enabled (`ENABLE
 requires `showPlugins` to be both truthy and zero-length, which no string satisfies, so it never
 fires.
 
-### Phase 1 — off by default (done)
+### Phase 1 — off by default (code deployed; not yet switched on)
 
 `ENABLE` gets `moodoftheday`; `SHOW_PLUGINS` does not. The plugin registers and its checkbox
 appears in the settings drawer, but the pill stays hidden until a viewer ticks it. Nothing changes
 for anyone who does not go looking.
+
+Where to make that edit, confirmed on the host: **`ENABLE` is set directly in the stack's
+`docker-compose.yml`, not in the `.env` beside it**, and there is no `SHOW_PLUGINS` key at all.
+`deploy.sh` only rewrites `NS_IMAGE_TAG` inside `.env`, so editing the compose file does not
+collide with it, and the next `docker compose up -d` picks both up together.
+
+The absent `SHOW_PLUGINS` is convenient here: the server default for `showPlugins` is `dbsize`
+plus what `adjustShownPlugins` appends, which does not include this plugin, so phase 1 is
+hidden-by-default without any extra configuration.
 
 Verify: the emoji renders (rather than a tofu box) on the devices our viewers actually use, the
 caption appears on hover, and the emoji is unchanged after a page reload but different tomorrow.

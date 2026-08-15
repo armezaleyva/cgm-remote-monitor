@@ -34,11 +34,14 @@ Divergence from upstream is one app change plus fork-local tooling and docs:
 | What | Where |
 |---|---|
 | Per-viewer display timezone picker (`341040a7`) | 41 lines across 5 client files |
+| Mood of the day pill (`11434648`) | `lib/plugins/moodoftheday.js` + one line in `lib/plugins/index.js` |
 | Deploy tooling (`74cbe3ea`) | `deploy/` — build, in-image test gate, DB backup, container swap, health check, auto-rollback |
-| Fork-local docs | `CLAUDE.md`, `docs/meta/ROADMAP.md` |
+| Local dev setup (`87aa124c`) | `bin/setup-dev.sh` — toolchain check, install, env files, MongoDB probe |
+| Fork-local docs | `CLAUDE.md`, `docs/meta/ROADMAP.md`, `docs/requirements/` |
 
-Only the timezone picker touches upstream-owned application files; the rest lives at paths
-upstream does not use, so it costs nothing at merge time. That is the pattern to keep.
+Only the timezone picker and one plugin-registration line touch upstream-owned application
+files; the rest lives at paths upstream does not use, so it costs nothing at merge time. That is
+the pattern to keep.
 
 Everything else is upstream `nightscout/cgm-remote-monitor`. Last upstream merge: `7e0e77f8`,
 2026-04-29.
@@ -55,17 +58,24 @@ for this fork — it is upstream's technical-debt catalogue, and we have not ado
   want server-set defaults that genuinely reach everyone — the deferred question, now concrete.
   → [basal-bolus-display.md](../requirements/basal-bolus-display.md)
 
-- **A "mood of the day" pill.** *(feature — shipping off by default first)* A decorative status
-  pill showing one absurd emoji per day, chosen by hashing the local calendar date so it holds
-  steady all day and every viewer sees the same one. Phase 1 ships it registered but hidden, so
-  it has to be ticked on per browser while it is being verified; phase 2 flips it on for
-  everyone. Phase 2 is the part to think about — a stored `showPlugins` in localStorage beats
-  the server default, so reaching existing viewers needs a storage-version bump and a migration,
-  which is **the same trap as the basal item above** on a payload where being wrong is harmless.
-  Treat it as the rehearsal for that decision.
+- **A "mood of the day" pill.** *(feature — phase 1 deployed, not yet switched on)* A decorative
+  status pill showing one absurd emoji per day, chosen by hashing the local calendar date so it
+  holds steady all day and every viewer sees the same one. The code is in production, but
+  **`ENABLE` in the compose file has not been changed yet**, so the plugin does not register and
+  nothing is visible — that one-word edit plus a container restart is the next action. Then tick
+  it on in one browser and confirm the emoji renders, the caption shows on hover, and it holds
+  overnight before flipping to phase 2. Phase 2 is the part to think about: a stored
+  `showPlugins` in localStorage beats the server default, so reaching existing viewers needs a
+  storage-version bump and a migration — **the same trap as the basal item above**, on a payload
+  where being wrong is harmless. Treat it as the rehearsal for that decision.
   → [mood-of-the-day.md](../requirements/mood-of-the-day.md)
 
 ## Done
+
+- **Local verification works, and the test suite is fully green.** *(2026-08-15)* One command
+  sets up a dev machine, and the documented baseline is now written down.
+  → [bin/setup-dev.sh](../../bin/setup-dev.sh), and the setup notes in
+  [CLAUDE.md](../../CLAUDE.md)
 
 - **A repeatable, verified deploy loop.** *(2026-08-14)* Build, in-image test gate, pre-deploy
   backup, swap, health check, auto-rollback. → [deploy/README.md](../../deploy/README.md)
@@ -80,6 +90,12 @@ for this fork — it is upstream's technical-debt catalogue, and we have not ado
   receives no security patches, and it holds personal health data for several people. Upstream's
   CI already covers 5.0 and 6.0, so the compatibility risk is low and mostly ours to schedule.
   Consider this against the restore path before starting.
+
+- **Decide what to do about `bin/setup.sh`.** *(ops — latent trap)* Upstream's script installs
+  Node 8 from a nodesource endpoint that no longer exists, and `README.md` points at it as the
+  recommended way to install Node. It cannot work for anyone who follows it. Fix in place,
+  delete along with the Vagrant references, or leave as upstream's problem — but decide, rather
+  than leaving a broken instruction in the README.
 
 ## Later
 
@@ -105,6 +121,13 @@ for this fork — it is upstream's technical-debt catalogue, and we have not ado
   on a feature shaped around our own multi-timezone viewers. **Consequence worth honouring:**
   keep local patches small and isolated, because every one of them is now a permanent tax on
   every future sync.
+- **`bin/setup-dev.sh` is the local setup path, not `make my.test.env`.** The Makefile target
+  produces a file the suite cannot run against, in three separate ways — no `NODE_ENV=test`, a
+  database name that one test hardcodes differently, and no mention that five suites need the
+  webpack bundle. None of it surfaced in CI, which uses `tests/ci.test.env` throughout.
+  **Consequence worth honouring:** when a test-environment assumption changes, fix it in
+  `bin/setup-dev.sh` and record it in `CLAUDE.md`; do not assume the Makefile or the README is
+  telling the truth about local setup.
 - **We are not adopting upstream's modernization agenda.**
   [modernization-roadmap.md](./modernization-roadmap.md) stays as a reference to borrow from, never
   as a plan we inherit. It was generated in a single AI pass in `2f79b3fa` and contains claims
