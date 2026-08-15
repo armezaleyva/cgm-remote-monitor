@@ -32,14 +32,16 @@ npm run lint                      # eslint, lib/ only — does not cover tests/,
 npm run bundle                    # production bundle;  npm run bundle-dev  for the dev build
 ```
 
-Tests need `my.test.env`, which is gitignored. Generate it with `make my.test.env` (writes Makefile defaults: local mongo `test_db`, `API_SECRET=test-secret-key`), or let `bin/setup-dev.sh` write it.
+Tests need `my.test.env`, which is gitignored. **`make my.test.env` alone produces a file the suite refuses to run against** — the Makefile target omits `NODE_ENV=test`, and `tests/lib/production-safety.js` hard-fails without it. CI never hit this because `tests/ci.test.env` sets it. Use `bin/setup-dev.sh`, which writes the Makefile defaults *plus* `NODE_ENV=test`, or append that line by hand.
 
 ```bash
 npm test                          # everything
-npm run test:unit                 # fast, no DB-heavy suites, runs parallel with 2 jobs
+npm run test:unit                 # fast suite, runs parallel with 2 jobs
 npm run test:integration          # api/api3/websocket/storage/reports suites
 npm run test:flaky                # repeat-runs suites to surface flakiness (scripts/flaky-test-runner.js)
 ```
+
+**`test:unit` is not self-contained**, despite the name. Verified on Windows/Node 22: 247 pass, and the rest need environment. 5 suites (`admintools`, `careportal`, `hashauth`, `pluginbase`, `profileeditor`) load the built bundle through `tests/fixtures/headless.js`, so `npm run bundle` must have run. 6 tests in `security` and `verifyauth` call `bootevent().boot()`, which connects to MongoDB and times out without it. A green `test:unit` therefore needs both the bundle and a running Mongo; lint and the pure-logic plugin suites need neither.
 
 **A new test file does not run automatically.** `test:unit` and `test:integration` (and their `:ci` twins) use an explicit brace-list of suite names in `package.json`, not a wildcard. `deploy.sh` gates on `npm run test:unit:ci`, so a test omitted from that list is silently skipped by the only verification step this fork has. Add the suite name to both the plain and `:ci` variant when adding a test. Only `npm test` and `test:parallel` glob all of `tests/*.test.js`.
 

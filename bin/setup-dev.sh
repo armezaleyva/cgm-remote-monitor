@@ -10,9 +10,13 @@
 #
 # Usage:
 #   bin/setup-dev.sh                 full setup, including the webpack bundle
-#   bin/setup-dev.sh --fast          skip the bundle; enough for lint + unit tests
+#   bin/setup-dev.sh --fast          skip the bundle; lint and most plugin suites
+#                                    only -- 5 unit tests load the built bundle
 #   bin/setup-dev.sh --skip-install  only create the env files
 #   bin/setup-dev.sh --verify        run lint and the unit suite when finished
+#
+# A fully green `npm run test:unit` needs BOTH the webpack bundle and a running
+# MongoDB; 6 of its tests boot the whole server. See the notes it prints.
 #
 # NOTE: this is not bin/setup.sh. That one is upstream's Vagrant/Ubuntu
 # provisioner and it installs Node 8, which this project no longer supports.
@@ -125,11 +129,21 @@ fi
 
 step 'Creating environment files'
 
-# Values mirror the Makefile's `my.test.env` target so both paths agree.
+# Values mirror the Makefile's `my.test.env` target, plus NODE_ENV=test.
+# The Makefile target omits NODE_ENV, and tests/lib/production-safety.js
+# hard-refuses to run without it, so `make my.test.env` alone produces a file
+# that cannot run the suite. tests/ci.test.env sets it, which is why CI never
+# hit this.
 if [ -f my.test.env ]; then
-  good 'my.test.env already exists, leaving it alone'
+  if grep -q '^NODE_ENV=test' my.test.env; then
+    good 'my.test.env already exists, leaving it alone'
+  else
+    printf 'NODE_ENV=test\n' >> my.test.env
+    good 'my.test.env existed but lacked NODE_ENV=test; appended it'
+  fi
 else
   cat > my.test.env <<'EOF'
+NODE_ENV=test
 MONGO_CONNECTION=mongodb://localhost:27017/test_db
 CUSTOMCONNSTR_mongo_collection=test_sgvs
 CUSTOMCONNSTR_mongo_settings_collection=test_settings
@@ -169,7 +183,9 @@ else
     good 'reachable on localhost:27017'
   else
     warn 'not reachable on localhost:27017'
-    info 'Unit tests do not need it. Integration tests do. To start one:'
+    info 'Most unit tests are pure logic and pass without it, but 6 of them'
+    info '(security, verifyauth) boot the whole server and will time out.'
+    info 'Integration tests need it throughout. To start one:'
     info '  docker run -d --name ns-test-mongo -p 27017:27017 mongo:4.4'
     info '(4.4 is what production pins, and the floor of the CI matrix.)'
   fi
@@ -188,11 +204,12 @@ fi
 # ------------------------------------------------------------------ 6. done
 
 step 'Ready'
-info 'npm run lint                     eslint, lib/ only'
-info 'npm run test:unit                fast suite, no MongoDB needed'
+info 'npm run lint                     eslint, lib/ only — needs nothing else'
 if [ "$MONGO_UP" -eq 1 ]; then
+  info 'npm run test:unit                fast suite'
   info 'npm run test:integration         api / storage / websocket suites'
 else
+  info 'npm run test:unit                (6 tests need MongoDB — see above)'
   info 'npm run test:integration         (needs MongoDB — see above)'
 fi
 info 'npm run dev                      dev server on PORT (default 1337)'
