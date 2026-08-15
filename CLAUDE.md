@@ -12,6 +12,18 @@ This is health-critical software: people use it to make insulin decisions, and a
 
 Requires Node >= 20 and npm >= 10 per `package.json` `engines`, plus a reachable MongoDB. Note that `.nvmrc` is stale — it pins 16.16.0, which the engines field rejects. Node 22 matches both the `Dockerfile` base image and the CI matrix.
 
+`bin/setup-dev.sh` does the whole local setup in one step — checks the toolchain against `engines`, runs `npm ci`, writes `my.test.env` and `my.env`, and probes for MongoDB. It is POSIX sh, works in Git Bash on Windows, and never overwrites existing env files.
+
+```bash
+bin/setup-dev.sh                  # full setup, including the webpack bundle
+bin/setup-dev.sh --fast           # skip the bundle — enough for lint + unit tests
+bin/setup-dev.sh --verify         # run lint and the unit suite when finished
+```
+
+**Do not use `bin/setup.sh`** — that is upstream's Vagrant/Ubuntu provisioner and it installs Node 8, which `engines` rejects.
+
+The equivalent steps by hand:
+
 ```bash
 npm install                       # also runs the webpack production build via postinstall
 cp docs/example-template.env my.env   # then edit MONGO_CONNECTION, API_SECRET; keep NODE_ENV=development
@@ -20,7 +32,7 @@ npm run lint                      # eslint, lib/ only — does not cover tests/,
 npm run bundle                    # production bundle;  npm run bundle-dev  for the dev build
 ```
 
-Tests need `my.test.env`, which is gitignored. Generate it with `make my.test.env` (writes Makefile defaults: local mongo `test_db`, `API_SECRET=test-secret-key`).
+Tests need `my.test.env`, which is gitignored. Generate it with `make my.test.env` (writes Makefile defaults: local mongo `test_db`, `API_SECRET=test-secret-key`), or let `bin/setup-dev.sh` write it.
 
 ```bash
 npm test                          # everything
@@ -28,6 +40,8 @@ npm run test:unit                 # fast, no DB-heavy suites, runs parallel with
 npm run test:integration          # api/api3/websocket/storage/reports suites
 npm run test:flaky                # repeat-runs suites to surface flakiness (scripts/flaky-test-runner.js)
 ```
+
+**A new test file does not run automatically.** `test:unit` and `test:integration` (and their `:ci` twins) use an explicit brace-list of suite names in `package.json`, not a wildcard. `deploy.sh` gates on `npm run test:unit:ci`, so a test omitted from that list is silently skipped by the only verification step this fork has. Add the suite name to both the plain and `:ci` variant when adding a test. Only `npm test` and `test:parallel` glob all of `tests/*.test.js`.
 
 Single suite — the script reads a `TEST` env var naming a file in `tests/` without the `.test.js` suffix:
 
